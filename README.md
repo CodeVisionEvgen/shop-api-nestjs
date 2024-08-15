@@ -22,8 +22,8 @@ The Shop API is a RESTful service built using NestJS and PostgreSQL. It provides
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/shop-api.git
-cd shop-api
+git clone https://github.com/CodeVisionEvgen/shop-api-nestjs
+cd shop-api-nestjs
 ```
 
 ### Install Dependencies
