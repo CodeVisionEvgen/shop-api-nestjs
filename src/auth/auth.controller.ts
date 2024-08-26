@@ -41,8 +41,14 @@ export class AuthController {
     const [AccessToken, RefreshToken] =
       await this.authService.generateTokens(user);
 
-    res.cookie('RefreshToken', RefreshToken);
-    res.cookie('AccessToken', AccessToken);
+    res.cookie('RefreshToken', RefreshToken, {
+      httpOnly: true,
+      secure: true,
+    });
+    res.cookie('AccessToken', AccessToken, {
+      httpOnly: true,
+      secure: true,
+    });
     res.json({
       ok: 1,
     });
