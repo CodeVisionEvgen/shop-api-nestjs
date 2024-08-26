@@ -1,34 +1,31 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { CreateAuthDto } from './dto/create-auth.dto';
-import { UpdateAuthDto } from './dto/update-auth.dto';
-
+import { SignUpAuthDto } from './dto/signup-auth.dto';
+import { User } from 'src/user/entities/user.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import * as bcrypt from 'bcrypt';
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    @InjectRepository(User) private userRepo: Repository<User>,
+  ) {}
 
-  @Post()
-  create(@Body() createAuthDto: CreateAuthDto) {
-    return this.authService.create(createAuthDto);
-  }
+  @Post('signup')
+  async signupByJWT(@Body() createAuthDto: SignUpAuthDto) {
+    const findUser = await this.userRepo.findOneBy({
+      Email: createAuthDto.Email,
+    });
 
-  @Get()
-  findAll() {
-    return this.authService.findAll();
-  }
+    if (findUser) throw new UnauthorizedException('User exists');
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.authService.findOne(+id);
-  }
+    const passwd = createAuthDto.Password;
+    const encryptedPasswd = await bcrypt.hash(passwd, 13);
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAuthDto: UpdateAuthDto) {
-    return this.authService.update(+id, updateAuthDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.authService.remove(+id);
+    return this.authService.createUserJWT({
+      ...createAuthDto,
+      Password: encryptedPasswd,
+    });
   }
 }

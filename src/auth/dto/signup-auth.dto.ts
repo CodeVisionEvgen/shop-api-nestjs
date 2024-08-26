@@ -1,7 +1,6 @@
 import { IsOptional, IsString } from 'class-validator';
 
-export class CreateUserDto {
-  @IsOptional()
+export class SignUpAuthDto {
   @IsString()
   FirstName: string;
 
@@ -12,6 +11,7 @@ export class CreateUserDto {
   @IsString()
   Password: string;
 
+  @IsOptional()
   @IsString()
   Email: string;
 }

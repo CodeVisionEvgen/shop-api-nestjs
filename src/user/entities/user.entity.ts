@@ -8,23 +8,22 @@ export class User {
   @Column({
     nullable: false,
   })
-  nickName: string;
+  FirstName: string;
 
   @Column({
     nullable: true,
   })
-  firstName: string;
-
+  LastName: string;
   @Column({
-    nullable: true,
+    nullable: false,
   })
-  lastName: string;
+  Email: string;
 
   @Column()
-  password: string;
+  Password: string;
 
   @Column({
     nullable: false,
   })
-  provider: string;
+  Provider: string;
 }
