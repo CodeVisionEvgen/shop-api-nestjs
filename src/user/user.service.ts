@@ -16,16 +16,16 @@ export class UserService {
     return this.userRepo.find();
   }
 
-  findOne(id: number) {
-    return this.userRepo.findOneBy({ id });
+  findOne(Id: number) {
+    return this.userRepo.findOneBy({ Id });
   }
 
-  async update(id: number, updateUserDto: UpdateUserDto) {
-    await this.userRepo.update({ id }, updateUserDto);
-    return this.userRepo.findOneBy({ id });
+  async update(Id: number, updateUserDto: UpdateUserDto) {
+    await this.userRepo.update({ Id }, updateUserDto);
+    return this.userRepo.findOneBy({ Id });
   }
 
-  remove(id: number) {
-    return this.userRepo.delete({ id });
+  remove(Id: number) {
+    return this.userRepo.delete({ Id });
   }
 }

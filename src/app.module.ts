@@ -5,7 +5,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PostgreSQLConfig } from '../configs/postgresql.config';
 import { ProductModule } from './product/product.module';
 import { AuthModule } from './auth/auth.module';
-
+// import { JwtModule } from '@nestjs/jwt';
+// import { JwtRegisterAsyncOptions } from 'configs/jwt-default.config';
 @Module({
   imports: [
     UserModule,
@@ -15,6 +16,7 @@ import { AuthModule } from './auth/auth.module';
     TypeOrmModule.forRootAsync({
       useFactory: PostgreSQLConfig,
       inject: [ConfigService],
+      // imports: [ConfigService],
     }),
     ProductModule,
     AuthModule,
