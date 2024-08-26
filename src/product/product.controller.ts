@@ -6,10 +6,12 @@ import {
   Patch,
   Param,
   Delete,
+  UseGuards,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { AccessTokenGuard } from 'guards/accessToken.guard';
 
 @Controller('product')
 export class ProductController {
@@ -20,6 +22,7 @@ export class ProductController {
     return this.productService.create(createProductDto);
   }
 
+  @UseGuards(new AccessTokenGuard())
   @Get()
   findAll() {
     return this.productService.findAll();
