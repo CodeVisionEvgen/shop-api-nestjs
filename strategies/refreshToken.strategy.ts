@@ -7,7 +7,7 @@ import { UserService } from 'src/user/user.service';
 @Injectable()
 export class AccessTokenStrategy extends PassportStrategy(
   Strategy,
-  'access-jwt',
+  'refresh-jwt',
 ) {
   constructor(
     configService: ConfigService,
@@ -15,7 +15,7 @@ export class AccessTokenStrategy extends PassportStrategy(
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey: configService.get('JWT_ACCESS_SECRET'),
+      secretOrKey: configService.get('JWT_REFRESH_SECRET'),
     });
   }
 
