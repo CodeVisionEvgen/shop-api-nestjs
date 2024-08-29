@@ -14,7 +14,7 @@ export class SignUpAuthDto {
   @IsString()
   Password: string;
 
-  @Length(1, 30)
+  @Length(1, 40)
   @IsOptional()
   @IsString()
   Email: string;
