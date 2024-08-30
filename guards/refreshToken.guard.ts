@@ -7,8 +7,8 @@ import { JsonWebTokenError } from '@nestjs/jwt';
 import { AuthGuard } from '@nestjs/passport';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Request, Response } from 'express';
-import { JwtAuth } from 'src/auth/entities/jwt-auth.entity';
-import { User } from 'src/user/entities/user.entity';
+import { JwtAuth } from '../src/auth/entities/jwt-auth.entity';
+import { User } from '../src/user/entities/user.entity';
 import { Repository } from 'typeorm';
 
 @Injectable()

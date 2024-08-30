@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SignUpAuthDto } from './dto/signup-auth.dto';
-import { User } from 'src/user/entities/user.entity';
+import { User } from '../../src/user/entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';

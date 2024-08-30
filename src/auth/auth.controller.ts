@@ -12,14 +12,14 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { SignUpAuthDto } from './dto/signup-auth.dto';
-import { User } from 'src/user/entities/user.entity';
+import { User } from '../../src/user/entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { Request, Response } from 'express';
 import { SignInAuthDto } from './dto/signin-auth.dto';
 import { JwtAuth } from './entities/jwt-auth.entity';
-import { RefreshTokenGuard } from 'guards/refreshToken.guard';
+import { RefreshTokenGuard } from '../../guards/refreshToken.guard';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 @Controller('auth')
@@ -36,6 +36,7 @@ export class AuthController {
   async signupByJWT(
     @Body() signUpAuthDto: SignUpAuthDto,
     @Res() res: Response,
+    @Req() req: Request,
   ) {
     const findUser = await this.userRepo.findOneBy({
       Email: signUpAuthDto.Email,
@@ -55,27 +56,28 @@ export class AuthController {
     const [AccessToken, RefreshToken] =
       await this.authService.generateTokens(user);
 
-    this.jwtAuthRepo.save({
+    const { headers } = req;
+
+    const userAgent = headers['user-agent'];
+
+    await this.jwtAuthRepo.save({
       Sub: user.Id,
       Access: AccessToken,
       Refresh: RefreshToken,
+      UserAgent: userAgent,
     });
 
-    res.cookie('RefreshToken', RefreshToken, {
-      httpOnly: true,
-      secure: true,
-    });
-    res.cookie('AccessToken', AccessToken, {
-      httpOnly: true,
-      secure: true,
-    });
-    res.json({
-      ok: 1,
-    });
+    this.setAuthCookies(res, RefreshToken, AccessToken);
+    delete user['Password'];
+    res.json(user);
   }
 
   @Post('signin')
-  async signinByJwt(@Res() res: Response, @Body() body: SignInAuthDto) {
+  async signinByJwt(
+    @Res() res: Response,
+    @Body() body: SignInAuthDto,
+    @Req() req: Request,
+  ) {
     const findedUser = await this.userRepo.findOneBy({ Email: body.Email });
 
     if (!findedUser)
@@ -92,23 +94,22 @@ export class AuthController {
     const [AccessToken, RefreshToken] =
       await this.authService.generateTokens(findedUser);
 
-    this.jwtAuthRepo.save({
+    const { headers } = req;
+
+    const userAgent = headers['user-agent'];
+
+    await this.jwtAuthRepo.delete({ UserAgent: userAgent });
+
+    await this.jwtAuthRepo.save({
       Sub: findedUser.Id,
       Access: AccessToken,
       Refresh: RefreshToken,
+      UserAgent: userAgent,
     });
 
-    res.cookie('RefreshToken', RefreshToken, {
-      httpOnly: true,
-      secure: true,
-    });
-    res.cookie('AccessToken', AccessToken, {
-      httpOnly: true,
-      secure: true,
-    });
-    res.json({
-      ok: 1,
-    });
+    this.setAuthCookies(res, RefreshToken, AccessToken);
+    delete findedUser['Password'];
+    res.json(findedUser);
   }
 
   @HttpCode(201)
@@ -132,12 +133,28 @@ export class AuthController {
     const [AccessToken, RefreshToken] =
       await this.authService.generateTokens(user);
 
-    this.jwtAuthRepo.save({
+    const { headers } = req;
+
+    const userAgent = headers['user-agent'];
+
+    await this.jwtAuthRepo.save({
       Sub: user.Id,
       Access: AccessToken,
       Refresh: RefreshToken,
+      UserAgent: userAgent,
     });
 
+    this.setAuthCookies(res, RefreshToken, AccessToken);
+    res.json({
+      ok: 1,
+    });
+  }
+
+  private setAuthCookies(
+    res: Response,
+    RefreshToken: string,
+    AccessToken: string,
+  ) {
     res.cookie('RefreshToken', RefreshToken, {
       httpOnly: true,
       secure: true,
@@ -145,9 +162,6 @@ export class AuthController {
     res.cookie('AccessToken', AccessToken, {
       httpOnly: true,
       secure: true,
-    });
-    res.json({
-      ok: 1,
     });
   }
 }

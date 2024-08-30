@@ -1,13 +1,12 @@
 import { IsOptional, IsString } from 'class-validator';
 
 export class CreateUserDto {
-  @IsOptional()
   @IsString()
   FirstName: string;
 
   @IsOptional()
   @IsString()
-  LastName: string;
+  LastName?: string;
 
   @IsString()
   Password: string;

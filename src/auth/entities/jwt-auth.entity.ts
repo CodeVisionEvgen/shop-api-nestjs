@@ -13,4 +13,7 @@ export class JwtAuth {
 
   @Column({ nullable: false })
   Refresh: string;
+
+  @Column({ nullable: true })
+  UserAgent: string | null;
 }
