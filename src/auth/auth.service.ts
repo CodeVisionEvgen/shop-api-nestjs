@@ -25,11 +25,19 @@ export class AuthService {
   private createUserJWT(signUpAuthDto: SignUpAuthDto) {
     return this.userRepo.save({ ...signUpAuthDto, Provider: 'JWT' });
   }
+  createUserOAUTH(signUpAuthDto: SignUpAuthDto) {
+    return this.userRepo.save({ ...signUpAuthDto, Provider: 'GOOGLE' });
+  }
 
   private deleteEmailUserValidation(uuid: string) {
     return this.emailValidationRepo.delete({ CallBackUUID: uuid });
   }
 
+  /**
+   *
+   * @param uuid - uuid in db for validation user (delete uuid and create user)
+   * @returns {User}
+   */
   async signupUserJwt(uuid: string) {
     const user = await this.findCallbackUUID(uuid);
     if (!user) throw new BadGatewayException();

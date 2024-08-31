@@ -11,10 +11,11 @@ import { MailerModule } from '@nestjs-modules/mailer';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MailerAsyncConfig } from 'configs/mailer.config';
 import { EmailValidation } from './entities/email-validation.entity';
+import { GoogleStrategy } from 'strategies/google.strategy';
 
 @Module({
   controllers: [AuthController],
-  providers: [AuthService, RefreshTokenStrategy],
+  providers: [AuthService, RefreshTokenStrategy, GoogleStrategy],
   imports: [
     TypeOrmModule.forFeature([User, JwtAuth, EmailValidation]),
     JwtModule,

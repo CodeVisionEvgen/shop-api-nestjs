@@ -25,6 +25,7 @@ import { RefreshTokenGuard } from '../../guards/refreshToken.guard';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { MailerService } from '@nestjs-modules/mailer';
+import { GoogleGuard } from 'guards/google.guard';
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -35,6 +36,43 @@ export class AuthController {
     private readonly configService: ConfigService,
     private readonly mailerService: MailerService,
   ) {}
+
+  @UseGuards(GoogleGuard)
+  @Get('google')
+  startGoogleCallback() {}
+
+  @UseGuards(GoogleGuard)
+  @Get('google/callback')
+  async handleGoogleCallback(@Req() req: Request, @Res() res: Response) {
+    const requestUser = req.user as Pick<User, 'Email' | 'FirstName'>;
+
+    let user = await this.userRepo.findOneBy({
+      Email: requestUser.Email,
+    });
+    if (!user) {
+      user = await this.authService.createUserOAUTH(req.user as SignUpAuthDto);
+    } else {
+      if (user.Provider !== 'GOOGLE')
+        throw new UnauthorizedException('Try another signin variant');
+    }
+    const [AccessToken, RefreshToken] =
+      await this.authService.generateTokens(user);
+
+    const { headers } = req;
+
+    const userAgent = headers['user-agent'];
+
+    await this.jwtAuthRepo.save({
+      Sub: user.Id,
+      Access: AccessToken,
+      Refresh: RefreshToken,
+      UserAgent: userAgent,
+    });
+    this.setAuthCookies(res, RefreshToken, AccessToken);
+    res.json({
+      ok: 1,
+    });
+  }
 
   @Get('email/confirm/:uuid')
   async confirmEmail(
@@ -77,6 +115,9 @@ export class AuthController {
 
     if (findUser) throw new UnauthorizedException('User exists');
 
+    if (findUser.Provider !== 'JWT')
+      throw new UnauthorizedException('Try another signup variant');
+
     const callBackUUID =
       [...signUpAuthDto.Email]
         .sort()
@@ -118,6 +159,9 @@ export class AuthController {
 
     if (!findedUser)
       throw new UnauthorizedException('Email or Password not valid');
+
+    if (findedUser.Provider !== 'JWT')
+      throw new UnauthorizedException('Try another signup variant');
 
     const fingerprint = body.Password;
     const userPassword = findedUser.Password;
