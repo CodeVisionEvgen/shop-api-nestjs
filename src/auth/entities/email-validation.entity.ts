@@ -1,7 +1,7 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
-@Entity('users')
-export class User {
+@Entity()
+export class EmailValidation {
   @PrimaryGeneratedColumn()
   Id: number;
 
@@ -26,4 +26,9 @@ export class User {
     nullable: false,
   })
   Provider: string;
+
+  @Column({
+    nullable: false,
+  })
+  CallBackUUID: string;
 }

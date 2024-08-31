@@ -9,6 +9,8 @@ import {
   HttpCode,
   Get,
   Req,
+  Param,
+  BadRequestException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { SignUpAuthDto } from './dto/signup-auth.dto';
@@ -22,6 +24,7 @@ import { JwtAuth } from './entities/jwt-auth.entity';
 import { RefreshTokenGuard } from '../../guards/refreshToken.guard';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { MailerService } from '@nestjs-modules/mailer';
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -30,29 +33,20 @@ export class AuthController {
     @InjectRepository(JwtAuth) private jwtAuthRepo: Repository<JwtAuth>,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly mailerService: MailerService,
   ) {}
 
-  @Post('signup')
-  async signupByJWT(
-    @Body() signUpAuthDto: SignUpAuthDto,
-    @Res() res: Response,
+  @Get('email/confirm/:uuid')
+  async confirmEmail(
+    @Param('uuid') uuid: string,
     @Req() req: Request,
+    @Res() res: Response,
   ) {
-    const findUser = await this.userRepo.findOneBy({
-      Email: signUpAuthDto.Email,
-    });
+    const findedUUID = await this.authService.findCallbackUUID(uuid);
 
-    if (findUser) throw new UnauthorizedException('User exists');
+    if (!findedUUID) throw new BadRequestException('UUID IS NOT VALID');
 
-    const passwd = signUpAuthDto.Password;
-
-    const encryptedPasswd = await bcrypt.hash(passwd, 13);
-
-    const user = await this.authService.createUserJWT({
-      ...signUpAuthDto,
-      Password: encryptedPasswd,
-    });
-
+    const user = await this.authService.signupUserJwt(uuid);
     const [AccessToken, RefreshToken] =
       await this.authService.generateTokens(user);
 
@@ -66,10 +60,52 @@ export class AuthController {
       Refresh: RefreshToken,
       UserAgent: userAgent,
     });
-
     this.setAuthCookies(res, RefreshToken, AccessToken);
-    delete user['Password'];
-    res.json(user);
+    res.json({
+      ok: 1,
+    });
+  }
+
+  @Post('signup')
+  async signupByJWT(
+    @Body() signUpAuthDto: SignUpAuthDto,
+    @Res() res: Response,
+  ) {
+    const findUser = await this.userRepo.findOneBy({
+      Email: signUpAuthDto.Email,
+    });
+
+    if (findUser) throw new UnauthorizedException('User exists');
+
+    const callBackUUID =
+      [...signUpAuthDto.Email]
+        .sort()
+        .map((letter) => Buffer.from(letter).toString('hex'))
+        .join('') + Math.floor(Math.random() * 44);
+
+    await this.mailerService.sendMail({
+      to: signUpAuthDto.Email,
+      subject: 'Welcome',
+      template: './auth/email-verification.template.pug',
+      context: {
+        name: signUpAuthDto.FirstName,
+        callBackURL: `${this.configService.get('DOMAIN_PROTOCOL')}://${this.configService.get('DOMAIN_URL')}:${this.configService.get('DOMAIN_PORT')}/api/auth/email/confirm/${callBackUUID}`,
+      },
+    });
+
+    const passwd = signUpAuthDto.Password;
+
+    const encryptedPasswd = await bcrypt.hash(passwd, 13);
+
+    await this.authService.createEmailUserValidationJWT({
+      ...signUpAuthDto,
+      Password: encryptedPasswd,
+      CallBackUUID: callBackUUID,
+    });
+
+    res.json({
+      ok: 1,
+    });
   }
 
   @Post('signin')
@@ -109,7 +145,7 @@ export class AuthController {
 
     this.setAuthCookies(res, RefreshToken, AccessToken);
     delete findedUser['Password'];
-    res.json(findedUser);
+    res.json({ ok: 1 });
   }
 
   @HttpCode(201)

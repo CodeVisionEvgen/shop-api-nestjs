@@ -1,20 +1,47 @@
-import { Injectable } from '@nestjs/common';
+import { BadGatewayException, Injectable } from '@nestjs/common';
 import { SignUpAuthDto } from './dto/signup-auth.dto';
 import { User } from '../../src/user/entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { EmailValidation } from './entities/email-validation.entity';
+import { SignupDtoWithEmailValidation } from 'types/combined.types';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User) private userRepo: Repository<User>,
+    @InjectRepository(EmailValidation)
+    private emailValidationRepo: Repository<EmailValidation>,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
-  async createUserJWT(signUpAuthDto: SignUpAuthDto) {
-    return await this.userRepo.save({ ...signUpAuthDto, Provider: 'JWT' });
+
+  findCallbackUUID(uuid: string) {
+    return this.emailValidationRepo.findOneBy({ CallBackUUID: uuid });
+  }
+
+  private createUserJWT(signUpAuthDto: SignUpAuthDto) {
+    return this.userRepo.save({ ...signUpAuthDto, Provider: 'JWT' });
+  }
+
+  private deleteEmailUserValidation(uuid: string) {
+    return this.emailValidationRepo.delete({ CallBackUUID: uuid });
+  }
+
+  async signupUserJwt(uuid: string) {
+    const user = await this.findCallbackUUID(uuid);
+    if (!user) throw new BadGatewayException();
+    await this.deleteEmailUserValidation(uuid);
+    return await this.createUserJWT(user);
+  }
+
+  createEmailUserValidationJWT(signUpAuthDto: SignupDtoWithEmailValidation) {
+    return this.emailValidationRepo.save({
+      ...signUpAuthDto,
+      Provider: 'JWT',
+    });
   }
 
   /**
