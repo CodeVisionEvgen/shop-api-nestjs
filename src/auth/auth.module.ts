@@ -9,14 +9,16 @@ import { RefreshTokenStrategy } from '../../strategies/refreshToken.strategy';
 import { UserModule } from '../../src/user/user.module';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { MailerAsyncConfig } from 'configs/mailer.config';
+import { MailerAsyncConfig } from '../../configs/mailer.config';
 import { EmailValidation } from './entities/email-validation.entity';
-import { GoogleStrategy } from 'strategies/google.strategy';
+import { GoogleStrategy } from '../../strategies/google.strategy';
+import { UiAvatarsModule } from 'nestjs-ui-avatars';
 
 @Module({
   controllers: [AuthController],
   providers: [AuthService, RefreshTokenStrategy, GoogleStrategy],
   imports: [
+    UiAvatarsModule.forRoot({}),
     TypeOrmModule.forFeature([User, JwtAuth, EmailValidation]),
     JwtModule,
     UserModule,

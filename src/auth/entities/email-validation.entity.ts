@@ -30,5 +30,10 @@ export class EmailValidation {
   @Column({
     nullable: false,
   })
+  Avatar: string;
+
+  @Column({
+    nullable: false,
+  })
   CallBackUUID: string;
 }

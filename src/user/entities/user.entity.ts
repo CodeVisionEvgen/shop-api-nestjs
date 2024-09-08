@@ -27,5 +27,10 @@ export class User {
   @Column({
     nullable: false,
   })
+  Avatar: string;
+
+  @Column({
+    nullable: false,
+  })
   Provider: string;
 }

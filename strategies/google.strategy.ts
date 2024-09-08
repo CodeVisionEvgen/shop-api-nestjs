@@ -19,13 +19,13 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     _refreshToken: string,
     profile: any,
     done: VerifyCallback,
-  ): Promise<any> {
-    const { name, emails } = profile;
+  ): Promise<void> {
+    const { name, emails, photos } = profile;
 
     const user = {
       Email: emails[0].value,
       FirstName: `${name.givenName}`,
-      // picture: photos[0].value,
+      Avatar: photos[0].value,
     };
 
     done(null, user);

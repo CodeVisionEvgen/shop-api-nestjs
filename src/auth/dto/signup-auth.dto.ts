@@ -18,4 +18,6 @@ export class SignUpAuthDto {
   @IsOptional()
   @IsString()
   Email: string;
+
+  Avatar: string;
 }

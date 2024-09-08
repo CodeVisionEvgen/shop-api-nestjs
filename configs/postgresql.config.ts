@@ -2,7 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { JwtAuth } from '../src/auth/entities/jwt-auth.entity';
 import { User } from '../src/user/entities/user.entity';
-import { EmailValidation } from 'src/auth/entities/email-validation.entity';
+import { EmailValidation } from '../src/auth/entities/email-validation.entity';
 
 export const PostgreSQLConfig = (
   configService: ConfigService,

@@ -4,13 +4,16 @@ import {
   Body,
   UnauthorizedException,
   Res,
-  // Get,
   UseGuards,
   HttpCode,
   Get,
   Req,
   Param,
   BadRequestException,
+  UseInterceptors,
+  UploadedFile,
+  ParseFilePipeBuilder,
+  HttpStatus,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { SignUpAuthDto } from './dto/signup-auth.dto';
@@ -25,7 +28,12 @@ import { RefreshTokenGuard } from '../../guards/refreshToken.guard';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { MailerService } from '@nestjs-modules/mailer';
-import { GoogleGuard } from 'guards/google.guard';
+import { GoogleGuard } from '../../guards/google.guard';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { randomUUID } from 'crypto';
+import { ImageKitService } from 'imagekit-nestjs';
+import { UiAvatarsService } from 'nestjs-ui-avatars';
+import axios from 'axios';
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -35,6 +43,8 @@ export class AuthController {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly mailerService: MailerService,
+    private readonly imageKitService: ImageKitService,
+    private readonly uiAvatarsService: UiAvatarsService,
   ) {}
 
   @UseGuards(GoogleGuard)
@@ -44,15 +54,32 @@ export class AuthController {
   @UseGuards(GoogleGuard)
   @Get('google/callback')
   async handleGoogleCallback(@Req() req: Request, @Res() res: Response) {
-    const requestUser = req.user as Pick<User, 'Email' | 'FirstName'>;
+    const requestUser = req.user as Pick<
+      User,
+      'Email' | 'FirstName' | 'Avatar'
+    >;
 
     let user = await this.userRepo.findOneBy({
       Email: requestUser.Email,
     });
     if (!user) {
-      user = await this.authService.createUserOAUTH(req.user as SignUpAuthDto);
+      const avatarBuffer = await axios.get(requestUser.Avatar, {
+        responseType: 'arraybuffer',
+      });
+
+      const avatar = await this.imageKitService.upload({
+        file: avatarBuffer.data,
+        fileName: `${randomUUID()}.png`,
+        folder: this.configService.get('IMAGEKIT_FILES_FOLDER'),
+      });
+
+      user = await this.authService.createUserOAUTH({
+        ...req.user,
+        Avatar:
+          this.configService.get('IMAGEKIT_URL_ENDPOINT') + avatar.filePath,
+      } as SignUpAuthDto);
     } else {
-      if (user.Provider !== 'GOOGLE')
+      if (user && user.Provider !== 'GOOGLE')
         throw new UnauthorizedException('Try another signin variant');
     }
     const [AccessToken, RefreshToken] =
@@ -104,10 +131,24 @@ export class AuthController {
     });
   }
 
+  @UseInterceptors(FileInterceptor('Avatar'))
   @Post('signup')
   async signupByJWT(
     @Body() signUpAuthDto: SignUpAuthDto,
     @Res() res: Response,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({
+          fileType: /jpeg|png|jpg/,
+        })
+        .addMaxSizeValidator({
+          maxSize: 1024 * 1024,
+        })
+        .build({
+          errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+        }),
+    )
+    file: Express.Multer.File,
   ) {
     const findUser = await this.userRepo.findOneBy({
       Email: signUpAuthDto.Email,
@@ -115,14 +156,7 @@ export class AuthController {
 
     if (findUser) throw new UnauthorizedException('User exists');
 
-    if (findUser.Provider !== 'JWT')
-      throw new UnauthorizedException('Try another signup variant');
-
-    const callBackUUID =
-      [...signUpAuthDto.Email]
-        .sort()
-        .map((letter) => Buffer.from(letter).toString('hex'))
-        .join('') + Math.floor(Math.random() * 44);
+    const callBackUUID = randomUUID();
 
     await this.mailerService.sendMail({
       to: signUpAuthDto.Email,
@@ -138,10 +172,22 @@ export class AuthController {
 
     const encryptedPasswd = await bcrypt.hash(passwd, 13);
 
+    const avatarBuffer = file
+      ? { image: file.buffer }
+      : await this.uiAvatarsService.downloadAvatar({
+          name: signUpAuthDto.FirstName,
+        });
+    const avatar = await this.imageKitService.upload({
+      file: avatarBuffer.image,
+      fileName: `${randomUUID()}.png`,
+      folder: this.configService.get('IMAGEKIT_FILES_FOLDER'),
+    });
+
     await this.authService.createEmailUserValidationJWT({
       ...signUpAuthDto,
       Password: encryptedPasswd,
       CallBackUUID: callBackUUID,
+      Avatar: this.configService.get('IMAGEKIT_URL_ENDPOINT') + avatar.filePath,
     });
 
     res.json({
@@ -160,8 +206,8 @@ export class AuthController {
     if (!findedUser)
       throw new UnauthorizedException('Email or Password not valid');
 
-    if (findedUser.Provider !== 'JWT')
-      throw new UnauthorizedException('Try another signup variant');
+    if (findedUser && findedUser.Provider !== 'JWT')
+      throw new UnauthorizedException('Try another signin variant');
 
     const fingerprint = body.Password;
     const userPassword = findedUser.Password;
@@ -242,6 +288,13 @@ export class AuthController {
     res.cookie('AccessToken', AccessToken, {
       httpOnly: true,
       secure: true,
+    });
+  }
+
+  private createAvatar(file: Express.Multer.File) {
+    this.imageKitService.upload({
+      file: file.buffer,
+      fileName: file.filename,
     });
   }
 }
